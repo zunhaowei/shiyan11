@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户注册</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <h2>用户注册</h2>
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" placeholder="请输入用户名（3-50位）" required minlength="3" maxlength="50">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" placeholder="请输入密码（至少6位）" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label for="email">邮箱（选填）</label>
+                <input type="email" id="email" placeholder="请输入邮箱">
+            </div>
+            <button type="submit" class="btn btn-primary">注 册</button>
+        </form>
+        <div id="message" class="message"></div>
+        <div class="switch-link">
+            已有账号？<a href="/login.html">立即登录</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value;
+            const msgDiv = document.getElementById('message');
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, email })
+                });
+
+                const result = await response.json();
+
+                if (result.code === 200) {
+                    msgDiv.className = 'message success';
+                    msgDiv.textContent = '注册成功！即将跳转到登录页...';
+                    setTimeout(() => { window.location.href = '/login.html'; }, 1500);
+                } else {
+                    msgDiv.className = 'message error';
+                    msgDiv.textContent = result.message || '注册失败';
+                }
+            } catch (error) {
+                msgDiv.className = 'message error';
+                msgDiv.textContent = '网络错误，请稍后重试';
+            }
+        });
+    </script>
+</body>
+</html>

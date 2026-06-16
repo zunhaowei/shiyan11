@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>首页 - 认证系统</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="home-container">
+        <h2>欢迎回来</h2>
+        <p class="user-info" id="usernameDisplay"></p>
+
+        <div class="token-display">
+            <strong>当前 JWT Token：</strong>
+            <span id="tokenDisplay"></span>
+        </div>
+
+        <button class="btn btn-success" onclick="callApi()">调用受保护接口 /api/auth/me</button>
+        <button class="btn btn-danger" onclick="logout()">退出登录</button>
+
+        <div id="apiResult" class="message" style="margin-top: 15px;"></div>
+    </div>
+
+    <script>
+        // 页面加载时检查登录状态
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const username = localStorage.getItem('username');
+
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            document.getElementById('usernameDisplay').textContent =
+                '当前登录用户：' + username;
+            document.getElementById('tokenDisplay').textContent = token;
+        });
+
+        // 调用受保护的 API
+        async function callApi() {
+            const token = localStorage.getItem('token');
+            const resultDiv = document.getElementById('apiResult');
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const result = await response.json();
+
+                if (result.code === 200) {
+                    resultDiv.className = 'message success';
+                    resultDiv.textContent = 'API 调用成功：' + result.data;
+                } else {
+                    resultDiv.className = 'message error';
+                    resultDiv.textContent = 'API 调用失败：' + result.message;
+                }
+            } catch (error) {
+                resultDiv.className = 'message error';
+                resultDiv.textContent = '请求错误：' + error.message;
+            }
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>
