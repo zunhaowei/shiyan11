@@ -44,7 +44,7 @@ public class SecurityConfig {
             // URL 权限配置
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()  // 注册/登录放行
-                .requestMatchers("/login.html", "/register.html", "/css/**", "/js/**").permitAll() // 静态资源放行
+                .requestMatchers("/login.html", "/register.html", "/blog.html", "/css/**", "/js/**").permitAll() // 静态资源放行
                 .anyRequest().authenticated()   // 其余接口需认证
             )
             // 将 JWT 过滤器添加到 UsernamePasswordAuthenticationFilter 之前

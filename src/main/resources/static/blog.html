@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>博客管理</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .blog-container {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            width: 800px;
+            max-width: 95%;
+            margin: 30px auto;
+        }
+        .blog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .blog-header h2 { margin: 0; color: #333; }
+        .btn-sm {
+            width: auto;
+            padding: 8px 20px;
+            font-size: 14px;
+        }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-outline {
+            background: #fff;
+            color: #667eea;
+            border: 1px solid #667eea;
+        }
+        .btn-outline:hover { background: #667eea; color: #fff; }
+        .btn-outline.active { background: #667eea; color: #fff; }
+
+        /* 表单卡片 */
+        .form-card {
+            background: #f8f9ff;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            display: none;
+        }
+        .form-card.show { display: block; }
+        .form-card textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            resize: vertical;
+            min-height: 150px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        .form-card textarea:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+        .form-card input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.3s;
+            margin-bottom: 15px;
+        }
+        .form-card input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+        .form-card .btn { margin-top: 10px; }
+
+        /* 文章列表 */
+        .post-list { list-style: none; }
+        .post-item {
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            transition: box-shadow 0.2s;
+        }
+        .post-item:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .post-item h3 { margin: 0 0 8px; color: #333; font-size: 18px; }
+        .post-item .post-meta {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+        .post-item .post-content {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 100px;
+            overflow: hidden;
+        }
+        .post-item .post-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+        }
+        .post-item .post-actions button {
+            width: auto;
+            padding: 5px 14px;
+            font-size: 13px;
+        }
+        .empty-hint {
+            text-align: center;
+            color: #aaa;
+            padding: 40px 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="blog-container">
+        <a href="/home.html" class="back-link">&larr; 返回首页</a>
+
+        <div class="blog-header">
+            <h2>博客管理</h2>
+            <div class="btn-group">
+                <button id="btnAll" class="btn btn-sm btn-outline active" onclick="switchTab('all')">全部文章</button>
+                <button id="btnMine" class="btn btn-sm btn-outline" onclick="switchTab('mine')">我的文章</button>
+                <button class="btn btn-sm btn-primary" onclick="showCreateForm()">+ 写文章</button>
+            </div>
+        </div>
+
+        <!-- 创建/编辑表单 -->
+        <div id="postForm" class="form-card">
+            <h3 id="formTitle" style="margin-bottom:15px;">创建文章</h3>
+            <input type="hidden" id="editId">
+            <input type="text" id="titleInput" placeholder="文章标题">
+            <textarea id="contentInput" placeholder="文章内容..."></textarea>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-primary btn-sm" onclick="submitPost()">发布</button>
+                <button class="btn btn-sm btn-outline" onclick="hideForm()">取消</button>
+            </div>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <!-- 文章列表 -->
+        <ul id="postList" class="post-list"></ul>
+    </div>
+
+    <script>
+        let currentTab = 'all';
+        let currentUser = '';
+
+        // 页面加载
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const username = localStorage.getItem('username');
+            if (!token) { window.location.href = '/login.html'; return; }
+            currentUser = username;
+            loadPosts();
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('btnAll').classList.toggle('active', tab === 'all');
+            document.getElementById('btnMine').classList.toggle('active', tab === 'mine');
+            loadPosts();
+        }
+
+        async function loadPosts() {
+            const token = localStorage.getItem('token');
+            const url = currentTab === 'all' ? '/api/posts' : '/api/posts/mine';
+            try {
+                const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+                const result = await res.json();
+                if (result.code === 200) {
+                    renderPosts(result.data);
+                }
+            } catch (e) {
+                showMsg('加载失败', 'error');
+            }
+        }
+
+        function renderPosts(posts) {
+            const listEl = document.getElementById('postList');
+            if (!posts || posts.length === 0) {
+                listEl.innerHTML = '<div class="empty-hint">暂无文章，快来写第一篇吧</div>';
+                return;
+            }
+            listEl.innerHTML = posts.map(p => `
+                <li class="post-item">
+                    <h3>${escapeHtml(p.title)}</h3>
+                    <div class="post-meta">
+                        作者：${escapeHtml(p.author)} &nbsp;|&nbsp; ${formatDate(p.createdAt)}
+                    </div>
+                    <div class="post-content">${escapeHtml(p.content)}</div>
+                    ${p.author === currentUser ? `
+                    <div class="post-actions">
+                        <button class="btn btn-sm btn-primary" onclick="showEditForm(${p.id}, '${escapeHtml(p.title)}', \`${escapeHtml(p.content).replace(/`/g, '\\`')}\`)">编辑</button>
+                        <button class="btn btn-sm btn-danger" onclick="deletePost(${p.id})">删除</button>
+                    </div>` : ''}
+                </li>
+            `).join('');
+        }
+
+        function showCreateForm() {
+            document.getElementById('editId').value = '';
+            document.getElementById('formTitle').textContent = '创建文章';
+            document.getElementById('titleInput').value = '';
+            document.getElementById('contentInput').value = '';
+            document.getElementById('postForm').classList.add('show');
+        }
+
+        function showEditForm(id, title, content) {
+            document.getElementById('editId').value = id;
+            document.getElementById('formTitle').textContent = '编辑文章';
+            document.getElementById('titleInput').value = title;
+            document.getElementById('contentInput').value = content;
+            document.getElementById('postForm').classList.add('show');
+        }
+
+        function hideForm() {
+            document.getElementById('postForm').classList.remove('show');
+        }
+
+        async function submitPost() {
+            const token = localStorage.getItem('token');
+            const editId = document.getElementById('editId').value;
+            const title = document.getElementById('titleInput').value.trim();
+            const content = document.getElementById('contentInput').value.trim();
+
+            if (!title || !content) { showMsg('标题和内容不能为空', 'error'); return; }
+
+            const isEdit = !!editId;
+            const url = isEdit ? `/api/posts/${editId}` : '/api/posts';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ title, content })
+                });
+                const result = await res.json();
+                if (result.code === 200) {
+                    showMsg(isEdit ? '编辑成功' : '发布成功', 'success');
+                    hideForm();
+                    loadPosts();
+                } else {
+                    showMsg(result.message, 'error');
+                }
+            } catch (e) {
+                showMsg('操作失败', 'error');
+            }
+        }
+
+        async function deletePost(id) {
+            if (!confirm('确定要删除这篇文章吗？')) return;
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch(`/api/posts/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const result = await res.json();
+                if (result.code === 200) {
+                    showMsg('删除成功', 'success');
+                    loadPosts();
+                } else {
+                    showMsg(result.message, 'error');
+                }
+            } catch (e) {
+                showMsg('删除失败', 'error');
+            }
+        }
+
+        function showMsg(text, type) {
+            const el = document.getElementById('message');
+            el.className = 'message ' + type;
+            el.textContent = text;
+            setTimeout(() => { el.className = 'message'; }, 3000);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleString('zh-CN');
+        }
+    </script>
+</body>
+</html>
