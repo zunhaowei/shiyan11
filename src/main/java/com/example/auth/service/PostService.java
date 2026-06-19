@@ -6,35 +6,43 @@ import com.example.auth.model.dto.CreatePostRequest;
 import com.example.auth.model.dto.UpdatePostRequest;
 import com.example.auth.repository.PostRepository;
 import com.example.auth.repository.UserRepository;
+import com.example.auth.util.SensitiveWordFilter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 /**
- * 文章业务逻辑层 —— 实现创建、编辑、删除、列表查询，含作者权限控制
+ * 文章业务逻辑层 —— 实现创建、编辑、删除、列表查询，含作者权限控制和敏感词过滤
  */
 @Service
 public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final SensitiveWordFilter sensitiveWordFilter;
 
-    public PostService(PostRepository postRepository, UserRepository userRepository) {
+    public PostService(PostRepository postRepository, UserRepository userRepository,
+                       SensitiveWordFilter sensitiveWordFilter) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
+        this.sensitiveWordFilter = sensitiveWordFilter;
     }
 
     /**
-     * 创建文章
+     * 创建文章（包含敏感词过滤）
      */
     public Post createPost(CreatePostRequest request, String username) {
         User author = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
 
+        // 敏感词过滤
+        String filteredTitle = sensitiveWordFilter.filter(request.getTitle());
+        String filteredContent = sensitiveWordFilter.filter(request.getContent());
+
         Post post = Post.builder()
-                .title(request.getTitle())
-                .content(request.getContent())
+                .title(filteredTitle)
+                .content(filteredContent)
                 .author(author)
                 .build();
 
@@ -66,7 +74,7 @@ public class PostService {
     }
 
     /**
-     * 编辑文章 —— 仅允许作者本人编辑
+     * 编辑文章 —— 仅允许作者本人编辑（包含敏感词过滤）
      */
     @Transactional
     public Post updatePost(Long postId, UpdatePostRequest request, String username) {
@@ -78,8 +86,12 @@ public class PostService {
             throw new RuntimeException("无权编辑他人的文章");
         }
 
-        post.setTitle(request.getTitle());
-        post.setContent(request.getContent());
+        // 敏感词过滤
+        String filteredTitle = sensitiveWordFilter.filter(request.getTitle());
+        String filteredContent = sensitiveWordFilter.filter(request.getContent());
+
+        post.setTitle(filteredTitle);
+        post.setContent(filteredContent);
         return postRepository.save(post);
     }
 

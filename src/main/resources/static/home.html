@@ -3,28 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>首页 - 认证系统</title>
+    <title>博客首页</title>
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .home-container {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            width: 900px;
+            max-width: 95%;
+            margin: 30px auto;
+        }
+        .home-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .home-header h2 { margin: 0; color: #333; }
+        .user-info {
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        /* 文章卡片 */
+        .post-card {
+            border: 1px solid #eee;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .post-card:hover {
+            box-shadow: 0 8px 25px rgba(102,126,234,0.15);
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        .post-card h3 {
+            margin: 0 0 10px;
+            color: #333;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .post-card h3:hover { color: #667eea; }
+        .post-card .post-meta {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+        .post-card .post-preview {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .post-card .read-more {
+            display: inline-block;
+            margin-top: 12px;
+            color: #667eea;
+            font-size: 14px;
+            text-decoration: none;
+        }
+        .post-card .read-more:hover { text-decoration: underline; }
+
+        .empty-hint {
+            text-align: center;
+            color: #aaa;
+            padding: 50px 0;
+        }
+        .message {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+    </style>
 </head>
 <body>
     <div class="home-container">
-        <h2>欢迎回来</h2>
-        <p class="user-info" id="usernameDisplay"></p>
-
-        <div class="token-display">
-            <strong>当前 JWT Token：</strong>
-            <span id="tokenDisplay"></span>
+        <div class="home-header">
+            <div>
+                <h2>博客首页</h2>
+                <p class="user-info" id="usernameDisplay">当前登录用户：加载中...</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="window.location.href='/blog.html'">博客管理</button>
+                <button class="btn btn-outline" onclick="window.location.href='/blog.html'">写文章</button>
+                <button class="btn btn-danger" onclick="logout()">退出登录</button>
+            </div>
         </div>
 
-        <button class="btn btn-success" onclick="callApi()">调用受保护接口 /api/auth/me</button>
-        <button class="btn btn-primary" onclick="window.location.href='/blog.html'" style="margin-bottom:12px;">进入博客管理</button>
-        <button class="btn btn-danger" onclick="logout()">退出登录</button>
+        <div id="message" class="message" style="display: none;"></div>
 
-        <div id="apiResult" class="message" style="margin-top: 15px;"></div>
+        <h3 style="margin-bottom: 20px; color: #333;">最新文章</h3>
+        <div id="postList"></div>
     </div>
 
     <script>
-        // 页面加载时检查登录状态
+        // 页面加载
         window.addEventListener('DOMContentLoaded', () => {
             const token = localStorage.getItem('token');
             const username = localStorage.getItem('username');
@@ -34,33 +121,77 @@
                 return;
             }
 
-            document.getElementById('usernameDisplay').textContent =
-                '当前登录用户：' + username;
-            document.getElementById('tokenDisplay').textContent = token;
+            document.getElementById('usernameDisplay').textContent = '当前登录用户：' + username;
+            loadPosts();
         });
 
-        // 调用受保护的 API
-        async function callApi() {
+        // 加载文章列表
+        async function loadPosts() {
             const token = localStorage.getItem('token');
-            const resultDiv = document.getElementById('apiResult');
-
             try {
-                const response = await fetch('/api/auth/me', {
+                const res = await fetch('/api/posts', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
-                const result = await response.json();
+                const result = await res.json();
 
                 if (result.code === 200) {
-                    resultDiv.className = 'message success';
-                    resultDiv.textContent = 'API 调用成功：' + result.data;
+                    renderPosts(result.data);
                 } else {
-                    resultDiv.className = 'message error';
-                    resultDiv.textContent = 'API 调用失败：' + result.message;
+                    showMsg('加载文章失败', 'error');
                 }
-            } catch (error) {
-                resultDiv.className = 'message error';
-                resultDiv.textContent = '请求错误：' + error.message;
+            } catch (e) {
+                showMsg('加载失败', 'error');
             }
+        }
+
+        // 渲染文章列表
+        function renderPosts(posts) {
+            const listEl = document.getElementById('postList');
+
+            if (!posts || posts.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-hint">
+                        <p style="font-size: 18px; margin-bottom: 15px;">还没有文章，快来写第一篇吧！</p>
+                        <button class="btn btn-primary" onclick="window.location.href='/blog.html'">去写文章</button>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = posts.map(p => `
+                <div class="post-card" onclick="window.location.href='/article.html?id=${p.id}'">
+                    <h3 onclick="event.stopPropagation(); window.location.href='/article.html?id=${p.id}'">
+                        ${escapeHtml(p.title)}
+                    </h3>
+                    <div class="post-meta">
+                        作者：${escapeHtml(p.author)} &nbsp;|&nbsp; ${formatDate(p.createdAt)}
+                    </div>
+                    <div class="post-preview">${escapeHtml(p.content)}</div>
+                    <a href="/article.html?id=${p.id}" class="read-more" onclick="event.stopPropagation();">
+                        阅读全文 & 评论 →
+                    </a>
+                </div>
+            `).join('');
+        }
+
+        function showMsg(text, type) {
+            const el = document.getElementById('message');
+            el.className = 'message ' + type;
+            el.textContent = text;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 3000);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleString('zh-CN');
         }
 
         // 退出登录

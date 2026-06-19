@@ -164,6 +164,17 @@ body {
     color: #555;
 }
 
+.btn-outline {
+    background: transparent;
+    color: #667eea;
+    border: 2px solid #667eea;
+}
+
+.btn-outline:hover {
+    background: #667eea;
+    color: #fff;
+}
+
 .btn-danger {
     background: #dc3545;
     color: #fff;

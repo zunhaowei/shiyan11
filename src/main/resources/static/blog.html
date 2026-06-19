@@ -201,7 +201,7 @@
             }
             listEl.innerHTML = posts.map(p => `
                 <li class="post-item">
-                    <h3>${escapeHtml(p.title)}</h3>
+                    <h3><a href="/article.html?id=${p.id}" style="color: inherit; text-decoration: none;">${escapeHtml(p.title)}</a></h3>
                     <div class="post-meta">
                         作者：${escapeHtml(p.author)} &nbsp;|&nbsp; ${formatDate(p.createdAt)}
                     </div>
